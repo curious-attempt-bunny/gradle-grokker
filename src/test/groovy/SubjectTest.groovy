@@ -1,11 +1,11 @@
-import spock.lang.*
+import spock.lang.Specification
 
 class SubjectTest extends Specification {
-	deff "a test"() {
+	def "a test"() {
 		given:
 		def subject = new Subject(x:5)
 
 		expect:
-		subject.x == 4
+		subject.x == 5
 	}
 }
