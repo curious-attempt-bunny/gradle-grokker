@@ -18,8 +18,16 @@ task grok(type: Grokker) {
 
 }
 
+import static java.nio.file.StandardWatchEventKind.*
+import java.nio.file.WatchEvent
+import java.nio.file.WatchKey
+
+// TODO watch the gradle build file
+
 class Grokker extends DefaultTask {
 	def dirsToWatch
+	static final def WATCH_KINDS = [ENTRY_CREATE, ENTRY_DELETE, ENTRY_MODIFY] as WatchEvent.Kind[]
+	static final def WATCH_MODIFIERS = [] as WatchEvent.Modifier[]
 	
 	Grokker() {
 		dirsToWatch = project.sourceSets.all*.collect { SourceSet sourceSet ->
@@ -31,7 +39,27 @@ class Grokker extends DefaultTask {
 	
 	@TaskAction
 	def watch() {
+		def fileSystem = java.nio.file.FileSystems.getDefault()
+		def watchService = fileSystem.newWatchService()
+
 		println "Watching these directories:"
 		println dirsToWatch.collect { "\t$it" }.join("\n")
+		
+		dirsToWatch.findAll { it.exists() }.each { dir ->
+			dir.toPath().register(watchService, WATCH_KINDS, WATCH_MODIFIERS)
+		}
+		
+		Thread.sleep(1000) { new File("src/main/groovy/Subject.groovy").append() }
+		
+		while(true) {
+			WatchKey key = watchService.take()
+			def events = key.pollEvents()
+			key.reset()
+			
+			events.each { event ->
+				//println "WatchEvent = ${event.context().class} of ${event.context().class.classes} : ${event.context().class.methods.join("\n")} / ${event.count()} / ${event.kind}"
+				println "${event.kind().name()} : ${event.context().toAbsolutePath()}"
+			}
+		}
 	}
 }
